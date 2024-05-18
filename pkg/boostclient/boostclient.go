@@ -216,3 +216,31 @@ func (bc *BoostClient) CancelDeal(ctx context.Context, dealId string) error {
 
 	return nil
 }
+
+type BoostSealingPipelineResponse struct {
+	Data struct {
+		SealingPipeline struct {
+			SectorStates map[string][]struct {
+				Key   string `json:"Key"`
+				Value int    `json:"Value"`
+				Order int    `json:"Order"`
+			} `json:"SectorStates"`
+		} `json:"sealingpipeline"`
+	} `json:"data"`
+}
+
+func (bc *BoostClient) GetBoostSealingPipeline(ctx context.Context) (*BoostSealingPipelineResponse, error) {
+	resp, err := bc.basicQuery(ctx, "sealingpipeline {\n    SectorStates {\n      Regular {\n        Key\n        Value\n        Order\n      }\n    }\n  }")
+	if err != nil {
+		return nil, err
+	}
+
+	var responseObject BoostSealingPipelineResponse
+	err = json.Unmarshal(resp, &responseObject)
+	if err != nil {
+		log.Warnf("Could not unmarshal data:\n%s", resp)
+		return nil, err
+	}
+
+	return &responseObject, nil
+}

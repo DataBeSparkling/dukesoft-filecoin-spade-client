@@ -8,6 +8,7 @@ import (
 	"filecoin-spade-client/pkg/log"
 	"filecoin-spade-client/pkg/lotusclient"
 	"fmt"
+	fildatasegment "github.com/ribasushi/fil-datasegment/pkg/dlass"
 	"golang.org/x/xerrors"
 	"io"
 	"net/http"
@@ -86,6 +87,8 @@ func (sc *SpadeClient) RequestNewDeal(ctx context.Context) (string, error) {
 			return "", xerrors.Errorf("error checking eligible pieces: %+v", err)
 		}
 
+		//log.Debugf("PENDING RESPONSE: %s", data)
+
 		sc.LatestEligiblePiecesRequestMoment = time.Now()
 		err = json.Unmarshal(data, &sc.LatestEligiblePiecesRequest)
 		if err != nil {
@@ -114,7 +117,11 @@ func (sc *SpadeClient) RequestNewDeal(ctx context.Context) (string, error) {
 
 			_, err := sc.invoke(ctx, piece.PieceCid, piece.TenantPolicyCid)
 			if err != nil {
-				return "", xerrors.Errorf("   > Could not invoke reservation: %s", err)
+				if err.Error() == "ErrTooManyReplicas" {
+					// If its "overreplicated" we can just add the piece to our requested pieces - we'll ignore it next run
+					sc.AddRequestedPiece(piece.PieceCid)
+				}
+				return "", xerrors.Errorf("   > Could not invoke reservation %s: %s", piece.PieceCid, err)
 			}
 
 			sc.AddRequestedPiece(piece.PieceCid)
@@ -133,9 +140,9 @@ func (sc *SpadeClient) invoke(ctx context.Context, pid string, policycid string)
 		"/sp/invoke",
 		fmt.Sprintf("call=reserve_piece&piece_cid=%s&tenant_policy=%s", pid, policycid),
 	)
-	if err != nil {
-		return nil, xerrors.Errorf("error invoking reservation request: %+v", err)
-	}
+	//if err != nil {
+	//	return nil, xerrors.Errorf("error invoking reservation request: %+v", err)
+	//}
 
 	//log.Infof("Invoke response:\n %s", string(data))
 
@@ -148,6 +155,27 @@ func (sc *SpadeClient) invoke(ctx context.Context, pid string, policycid string)
 
 	if resp.ErrSlug != "" {
 		return nil, xerrors.New(resp.ErrSlug)
+	}
+
+	return &resp.Response, nil
+}
+
+func (sc *SpadeClient) RequestPieceManifest(ctx context.Context, proposalId string) (*fildatasegment.Agg, error) {
+	data, err := sc.doRequest(
+		ctx,
+		"GET",
+		fmt.Sprintf("/sp/piece_manifest?proposal=%s", proposalId),
+		"",
+	)
+
+	if err != nil {
+		return nil, xerrors.Errorf("error requesting piece manifest: %+v", err)
+	}
+
+	var resp ResponsePieceManifestEnvelope
+	err = json.Unmarshal(data, &resp)
+	if err != nil {
+		return nil, xerrors.Errorf("could not unmarshall response: %+v", err)
 	}
 
 	return &resp.Response, nil
@@ -179,12 +207,12 @@ func (sc *SpadeClient) doRequest(ctx context.Context, method string, url string,
 	}
 
 	if resp.StatusCode == 401 {
-		return []byte{}, xerrors.New("spade API returned 401 (Unauthorized) - wrong token?")
+		return body, xerrors.New("spade API returned 401 (Unauthorized) - wrong token?")
 	}
 
 	if resp.StatusCode != 200 {
 		log.Debugf("spade returned response body: %s", body)
-		return []byte{}, xerrors.New(fmt.Sprintf("spade API returned %d instead of expected 200", resp.StatusCode))
+		return body, xerrors.New(fmt.Sprintf("spade API returned %d instead of expected 200", resp.StatusCode))
 	}
 
 	return body, nil

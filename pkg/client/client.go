@@ -8,9 +8,7 @@ import (
 	"filecoin-spade-client/pkg/log"
 	"filecoin-spade-client/pkg/lotusclient"
 	"filecoin-spade-client/pkg/spadeclient"
-	"github.com/dustin/go-humanize"
-	"golang.org/x/exp/slices"
-	"path"
+	"fmt"
 	"regexp"
 	"strings"
 	"sync"
@@ -66,8 +64,11 @@ func (cl *Client) Start(ctx context.Context) error {
 	defer cancelSpade()
 	cl.SpadeClient.Start(spadectx)
 
-	log.Infof("Spade client successfully started - starting main loop")
+	//log.Infof("Requesting sealing pipeline")
+	//sealing, err := cl.BoostClient.GetBoostSealingPipeline(ctx)
+	//log.Infof("Spade deal data: %+v (%+v)", sealing, err)
 
+	log.Infof("Spade client successfully started - starting main loop")
 	go cl.scanPendingProposals(spadectx)
 
 	select {
@@ -84,47 +85,6 @@ func (cl *Client) scanPendingProposals(ctx context.Context) {
 
 	totalRequested := 0
 
-	tmpIgnoreDuplicateDealReports := []string{
-		"baga6ea4seaqjjubu2zd33w7yvirxeymt6civduuctt5vhuvzinmcslekarkywga",
-		"baga6ea4seaqd7rydprfubxkklht533xjpy7aql2gwtn5x6kouh57o5pllrebcly",
-		"baga6ea4seaqm3zlbiexmjl2rd5qrnmwldh24twyprxtyzs36d36zvgwkhnmvyii",
-		"baga6ea4seaqlsvlqh5ud24uh7vowc3lopoffix55t6mmot2jgm5dxwdbrhjneii",
-		"baga6ea4seaqka5bzeqysuvh5yvhwpfgwjwzrwuql3p6tiqm3g7u7xvt2ny5jcdi",
-		"baga6ea4seaqkczl5ffhvpqirpts4a7whvjx6xghkspzfbntbynj4aooksukfamq",
-		"baga6ea4seaqoz2gfuzz4aluguchqhdtku5kgfqwwdobrckdcbvqt2jc7ifvgclq",
-		"baga6ea4seaqok7p6b5qww3uf67j65fqvnkxlce4hqt2xrxkgan4atkstnukemma",
-		"baga6ea4seaqkngiqocx5zjks7x7rhufuwcw7vhscwi6j2zjtxkgvq4tdcekbqla",
-		"baga6ea4seaqlhfmdw6lmicu47nnaha6ixhfpx2vvceojzrhhlrygipkq6wsruoi",
-		"baga6ea4seaqn5lnyu6paoszmwebdbtkhq653qo6idcd3jofxmnpewkaloymfwkq",
-		"baga6ea4seaqnl6x4tcbsrx4p5uwr2x6w2f44ezbu7vqpcjwh2z4m4jry4qyuway",
-		"baga6ea4seaqnxyeaunvpr5i5kfl5fpnu25bduljvpyzsowthitvd3inabcwaibq",
-		"baga6ea4seaqhefqeknqb4azir2rmr4k5fevit2mo5y6zzdearij5rpoyh7pt6ny",
-		"baga6ea4seaqguhn5qv2vpvxho76yccplnf3ez5hs7clyfalh6wla2goy6zljyhq",
-		"baga6ea4seaqpm7jc542mjgaxuap36dhf7yjvgeqypnjbsdahcq66dgdwfvlywjq",
-		"baga6ea4seaqe3rdclkaaa3ognjkkxb3zkaftbm5hbdhaeq2huced7mdue5jccfi",
-		"baga6ea4seaqpbp5lzmuhmpfifehshe2ogs2e7re6xus5iux74mc5pwy3l63a6na",
-		"baga6ea4seaqn53daumrft6l2top6xmskjq273uo47plrkx6wzpguwftd435xojq",
-		"baga6ea4seaqckmxul7gttxp2v7ylxll25ml77qnyikeimtwtxgzwb67gh4iogky",
-		"baga6ea4seaqisv5yzvy3kevipy6acu3vcyazt2rrgptajpjtudkoumofof7oodq",
-		"baga6ea4seaqfoyouwapqrnmg74q7djfnbtiv7hpout3hwp6ts2tzdhzmdifc6di",
-		"baga6ea4seaqb56tmbenmawhbu3qaxy5khqccccovjphfoqlnsamfacv74fjwgla",
-		"baga6ea4seaqlw3gyzpgdpo3fjbhgi3xuajkzokhmqcz3t767fqaqzjgxzy3i4mi",
-		"baga6ea4seaqmdf5i2jn4fxc3xk6xmp72goyj3m4lfuauc2aon6h6jqrn5aepoeq",
-		"baga6ea4seaqipjgepwteyol7zrjgrgmp3r65zmqqayxvecmu4fsg3sd3olygsoq",
-		"baga6ea4seaqoq3bsuopxvlrlfffza4mduaggs2w7qeqycnraosizzckjwbdrwmq",
-		"baga6ea4seaqmp2q4v7gydcn6ogasgnbfq6l645yeb3i2apehgjtombgvehjjwna",
-		"baga6ea4seaqfge7xlfvyoefrrwj3m55dkie4ju53azlklll3yb3pmj5ybyoqmgi",
-		"baga6ea4seaqkut42p3jobsmgarf4hzl2akh6cwl2nmkonqg6ilgxdaxztm7vmii",
-		"baga6ea4seaqipbitn2bvt63hykgsnzfzcw4uvpbb5fneqku7apx6uf742p3ukfy",
-		"baga6ea4seaqkwspzcxaa46bjjtyji4g35nmargxyely32k4pniyquhx4mup6iiy",
-		"baga6ea4seaqealrqvjvixnjhmencpftlc4ghgfhdqhfkff4o4fpwbgcd5etm4li",
-		"baga6ea4seaqmlk4u4ifvovh5r5dr2d7mya3yi4awrdjtgp7zt7xourdxzhkd4ay",
-		"baga6ea4seaqhcv4xquopctzi7tga3tgoid5lugxne4youyicgg5tr7uuhxrmapa",
-		"baga6ea4seaqlpkbi66u6ppgv3skh2vy2ecru2vhcfyafo4lohnlwjp3aiywaqiy",
-		"baga6ea4seaqb4iszz73v5kqx7bb67oxus4ewfjcaz6bqlric4p4xe5k4qzbo2ci",
-		"baga6ea4seaqhi4pekonht6lh3gvnlfcykzgrwqk3dhcglkdcptp6cp6dq7agqay",
-	}
-
 	for {
 		var boostDeals *boostclient.BoostDealsResponse
 
@@ -140,9 +100,6 @@ func (cl *Client) scanPendingProposals(ctx context.Context) {
 		// We take these failures, and if they are indeed duplicate failures, we cancel them
 		for _, failure := range pendingProposals.RecentFailures {
 			if strings.Index(failure.Error, "deal proposal is identical to deal") != -1 {
-				if slices.Contains(tmpIgnoreDuplicateDealReports, failure.PieceCid) {
-					continue // Temporarily SKIP these piece cids as they are manually removed from the DB and _can_ be requested
-				}
 				r, _ := regexp.Compile(`[a-z0-9]{8}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{12}`)
 				duplicate := r.FindString(failure.Error)
 				if duplicate != "" {
@@ -192,6 +149,8 @@ func (cl *Client) scanPendingProposals(ctx context.Context) {
 				}
 			}
 		}
+
+		//log.Debugf("PENDING PROPOSALS: \n %+v", pendingProposals.PendingProposals)
 
 		if len(pendingProposals.PendingProposals) == 0 {
 			//no pending proposals, lets skip the deal checking in boost
@@ -351,105 +310,144 @@ handleDeal:
 		return
 	}
 
-	log.Infof("Started handling deal %s", proposal.ProposalID)
-	if len(proposal.Sources) > 1 {
-		log.Warnf("More than 1 source found for deal: %s (%+v)", proposal.ProposalID, proposal.Sources)
-	}
-	//for i, source := range proposal.Sources {
-	//	log.Infof(" > Source %d: %s", i, source)
-	//}
-
-	// Check if we already have an active download for this source
-	activeGid, err := cl.startDownloadOrAttachToExisting(&proposal)
+	log.Infof("Fetching manifest for %s", proposal.ProposalID)
+	manifest, err := cl.SpadeClient.RequestPieceManifest(ctx, proposal.ProposalID)
 	if err != nil {
-
+		log.Warnf(" > Could not fetch manifest: %+s", err)
+		time.Sleep(time.Second)
 		retry++
-		duration := time.Duration(10*retry) * time.Second
-		log.Warnf("Error starting download for %s: %s | sleeping for %s and retrying", proposal.ProposalID, err, duration)
-		time.Sleep(duration)
 		goto handleDeal
 	}
 
-	cl.monitorDownload(ctx, activeGid, &proposal)
+	outFilename := fmt.Sprintf("%s/%s", cl.Configuration.DownloadPath, manifest.FRC58CommP.PCidV2())
+	log.Debugf("Found %d segments, starting download and assembly (%s)", len(manifest.PieceList), outFilename)
+
+	// Check if we already have an active download for this source
+	err = manifest.StartDownload(ctx, outFilename, true, 50, 60*10, false, 5)
+	if err != nil {
+		log.Infof("Download errored %s (%s) - stopping and removing", proposal.ProposalID, err.Error())
+
+		// remove from actual list
+		cl.ActiveDealsMutex.Lock()
+		delete(cl.ActiveDeals, proposal.ProposalID)
+		cl.ActiveDealsMutex.Unlock()
+		return
+	}
 	log.Infof(" > Download handler done for %s", proposal.ProposalID)
+
+	err = cl.BoostClient.ImportDeal(ctx, &proposal, outFilename)
+	if err != nil {
+		log.Warnf("Failure importing boost deal %s: %s", proposal.ProposalID, err)
+		return
+	}
+
+	// remove from actual list
+	cl.ActiveDealsMutex.Lock()
+	delete(cl.ActiveDeals, proposal.ProposalID)
+	cl.ActiveDealsMutex.Unlock()
+
+	// also add to imported list
+	cl.AddImported(proposal.ProposalID)
+
+	log.Infof("Successfully downloaded and imported %s", proposal.ProposalID)
+	return
 }
 
 // startDownloadOrAttachToExisting returns a GID as a string that can be used to check status
-func (cl *Client) startDownloadOrAttachToExisting(proposal *spadeclient.DealProposal) (string, error) {
-	for _, dealSource := range proposal.Sources {
-		//log.Infof("Finding URL [%s]", dealSource)
-		foundDownload := cl.AriaClient.FindDownloadByUri(dealSource)
-		if foundDownload != nil {
-			log.Infof("   > Found existing download %s: %s", foundDownload.GID, foundDownload.Status)
-			return foundDownload.GID, nil
-		}
-	}
+//func (cl *Client) startDownloadOrAttachToExisting(proposal *spadeclient.DealProposal) (string, error) {
+//	for _, dealSource := range proposal.Sources {
+//		//log.Infof("Finding URL [%s]", dealSource)
+//		foundDownload := cl.AriaClient.FindDownloadByUri(dealSource)
+//		if foundDownload != nil {
+//			log.Infof("   > Found existing download %s: %s", foundDownload.GID, foundDownload.Status)
+//			return foundDownload.GID, nil
+//		}
+//	}
+//
+//	//log.Infof("   > No existing download found - creating new")
+//	if len(proposal.Sources) > 1 {
+//		log.Warnf("Multiple sources found for %s! Only using first source.", proposal.ProposalID)
+//	}
+//	if len(proposal.Sources) == 0 {
+//		log.Warnf("No sources found for %s: %+v", proposal.ProposalID, proposal)
+//	}
+//	status, err := cl.AriaClient.NewDownload(proposal.Sources[0], path.Base(proposal.Sources[0]))
+//	if err != nil {
+//		return "", err
+//	}
+//	return status.GID, nil
+//}
 
-	//log.Infof("   > No existing download found - creating new")
-	if len(proposal.Sources) > 1 {
-		log.Warnf("Multiple sources found for %s! Only using first source.", proposal.ProposalID)
-	}
-	if len(proposal.Sources) == 0 {
-		log.Warnf("No sources found for %s: %+v", proposal.ProposalID, proposal)
-	}
-	status, err := cl.AriaClient.NewDownload(proposal.Sources[0], path.Base(proposal.Sources[0]))
-	if err != nil {
-		return "", err
-	}
-	return status.GID, nil
-}
-
-func (cl *Client) monitorDownload(ctx context.Context, gid string, proposal *spadeclient.DealProposal) {
-	log.Infof("Monitoring download %s", gid)
-	// @todo make use of the Aria2C pub/sub events to make this quicker
-	ticker := time.NewTicker(time.Second * 10)
-	defer ticker.Stop()
-
-	for {
-		status, err := cl.AriaClient.GetStatus(gid)
-		if err != nil {
-			log.Warnf("Error getting status for download %s: %s", gid, err)
-		} else {
-			if status.Status == "complete" {
-				log.Infof("Download finished %s (%s)", status.GID, proposal.ProposalID)
-				err := cl.BoostClient.ImportDeal(ctx, proposal, status.Files[0].Path)
-				if err != nil {
-					log.Warnf("Failure importing boost deal %s: %s", proposal.ProposalID, err)
-					return
-				}
-				//log.Infof("Handled deal %s (%s) - removing from Aria2c", status.GID, proposal.ProposalID)
-
-				// Remove from aria2c
-				err = cl.AriaClient.RemoveDownload(status.GID)
-				if err != nil {
-					log.Warnf("Could not remove download from Aria2C: %s", err)
-				}
-				//log.Infof("Removed %s (%s) from aria2c", status.GID, proposal.ProposalID)
-
-				// remove from actual list
-				cl.ActiveDealsMutex.Lock()
-				delete(cl.ActiveDeals, proposal.ProposalID)
-				cl.ActiveDealsMutex.Unlock()
-
-				// also add to imported list
-				cl.AddImported(proposal.ProposalID)
-
-				log.Infof("Successfully downloaded and imported %s", proposal.ProposalID)
-				return
-			}
-
-			percentage := 0.0
-			if status.CompletedLength != 0 && status.TotalLength != 0 {
-				percentage = (float64(status.CompletedLength) / float64(status.TotalLength)) * 100.0
-			}
-			log.Infof("Download %s (%s): %s @ %s/s [%s / %s (%3.2f%%)]", status.GID, proposal.ProposalID, status.Status, humanize.Bytes(uint64(status.DownloadSpeed)), humanize.Bytes(uint64(status.CompletedLength)), humanize.Bytes(uint64(status.TotalLength)), percentage)
-		}
-
-		select {
-		case <-ticker.C: // Return back into the loop
-		case <-ctx.Done():
-			log.Infof("Stopping download monitoring %s: context done", gid)
-			return
-		}
-	}
-}
+//func (cl *Client) monitorDownload(ctx context.Context, gid string, proposal *spadeclient.DealProposal) {
+//	log.Infof("Monitoring download %s", gid)
+//
+//	log.Infof("Fetching manifest %s", gid)
+//
+//	// @todo make use of the Aria2C pub/sub events to make this quicker
+//	ticker := time.NewTicker(time.Second * 10)
+//	defer ticker.Stop()
+//
+//	for {
+//		status, err := cl.AriaClient.GetStatus(gid)
+//		if err != nil {
+//			log.Warnf("Error getting status for download %s: %s", gid, err)
+//		} else {
+//			if status.Status == "error" {
+//				log.Infof("Download errored %s (%s) - stopping and removing", status.GID, proposal.ProposalID)
+//				// Remove from aria2c
+//				err = cl.AriaClient.RemoveDownload(status.GID)
+//				if err != nil {
+//					log.Warnf("Could not remove download from Aria2C: %s", err)
+//				}
+//				//log.Infof("Removed %s (%s) from aria2c", status.GID, proposal.ProposalID)
+//
+//				// remove from actual list
+//				cl.ActiveDealsMutex.Lock()
+//				delete(cl.ActiveDeals, proposal.ProposalID)
+//				cl.ActiveDealsMutex.Unlock()
+//				return
+//			}
+//
+//			if status.Status == "complete" {
+//				log.Infof("Download finished %s (%s)", status.GID, proposal.ProposalID)
+//				err := cl.BoostClient.ImportDeal(ctx, proposal, status.Files[0].Path)
+//				if err != nil {
+//					log.Warnf("Failure importing boost deal %s: %s", proposal.ProposalID, err)
+//					return
+//				}
+//				//log.Infof("Handled deal %s (%s) - removing from Aria2c", status.GID, proposal.ProposalID)
+//
+//				// Remove from aria2c
+//				err = cl.AriaClient.RemoveDownload(status.GID)
+//				if err != nil {
+//					log.Warnf("Could not remove download from Aria2C: %s", err)
+//				}
+//				//log.Infof("Removed %s (%s) from aria2c", status.GID, proposal.ProposalID)
+//
+//				// remove from actual list
+//				cl.ActiveDealsMutex.Lock()
+//				delete(cl.ActiveDeals, proposal.ProposalID)
+//				cl.ActiveDealsMutex.Unlock()
+//
+//				// also add to imported list
+//				cl.AddImported(proposal.ProposalID)
+//
+//				log.Infof("Successfully downloaded and imported %s", proposal.ProposalID)
+//				return
+//			}
+//
+//			percentage := 0.0
+//			if status.CompletedLength != 0 && status.TotalLength != 0 {
+//				percentage = (float64(status.CompletedLength) / float64(status.TotalLength)) * 100.0
+//			}
+//			log.Infof("Download %s (%s): %s @ %s/s [%s / %s (%3.2f%%)]", status.GID, proposal.ProposalID, status.Status, humanize.Bytes(uint64(status.DownloadSpeed)), humanize.Bytes(uint64(status.CompletedLength)), humanize.Bytes(uint64(status.TotalLength)), percentage)
+//		}
+//
+//		select {
+//		case <-ticker.C: // Return back into the loop
+//		case <-ctx.Done():
+//			log.Infof("Stopping download monitoring %s: context done", gid)
+//			return
+//		}
+//	}
+//}

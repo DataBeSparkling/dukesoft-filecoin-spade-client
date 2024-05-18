@@ -2,6 +2,7 @@ package spadeclient
 
 import (
 	apitypes "github.com/data-preservation-programs/go-spade-apitypes"
+	fildatasegment "github.com/ribasushi/fil-datasegment/pkg/dlass"
 	"time"
 )
 
@@ -60,6 +61,18 @@ type ResponseInvokeEnvelope struct { // Copied from apitypes.ResponseEnvelope
 	Response           ResponseInvoke `json:"response"`
 }
 
+type ResponsePieceManifestEnvelope struct { // Copied from apitypes.ResponseEnvelope
+	RequestID          string             `json:"request_id,omitempty"`
+	ResponseTime       time.Time          `json:"response_timestamp"`
+	ResponseStateEpoch int64              `json:"response_state_epoch,omitempty"`
+	ResponseCode       int                `json:"response_code"`
+	ErrCode            int                `json:"error_code,omitempty"`
+	ErrSlug            string             `json:"error_slug,omitempty"`
+	ErrLines           []string           `json:"error_lines,omitempty"`
+	InfoLines          []string           `json:"info_lines,omitempty"`
+	Response           fildatasegment.Agg `json:"response"`
+}
+
 type ResponseInvoke struct {
 }
 
@@ -74,5 +87,5 @@ type DealProposal struct { // copied from apitypes.DealProposal
 	StartTime      time.Time `json:"deal_start_time"`
 	StartEpoch     int64     `json:"deal_start_epoch"`
 	ImportCmd      string    `json:"sample_import_cmd"`
-	Sources        []string  `json:"data_sources,omitempty"` // this JSON entry differs
+	//Sources        []string  `json:"data_sources,omitempty"` // this JSON entry differs
 }
