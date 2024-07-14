@@ -49,16 +49,6 @@ func main() {
 						Value: 2,
 						Usage: "Total number of spade deals that should be actively downloading / requesting (This doesn't include other deals or sealing!)",
 					},
-					&cli.StringFlag{
-						Name:  "aria2-url",
-						Value: "ws://localhost:6800/jsonrpc",
-						Usage: "RPC API URL for Aria2C",
-					},
-					&cli.StringFlag{
-						Name:  "aria2-password",
-						Value: "",
-						Usage: "Aria2C JSON RPC Password",
-					},
 					&cli.IntFlag{
 						Name:  "boost-graphql-port",
 						Value: 8080,
@@ -70,8 +60,6 @@ func main() {
 					cfg.DownloadPath = cCtx.String("download-path")
 					cfg.MaxSpadeDealsActive = cCtx.Int("max-spade-deals-active")
 					cfg.BoostConfig.GraphQlPort = cCtx.Int("boost-graphql-port")
-					cfg.AriaConfig.AuthToken = cCtx.String("aria2-password")
-					cfg.AriaConfig.Url = cCtx.String("aria2-url")
 
 					startClient(cCtx.Context, cfg)
 					return nil

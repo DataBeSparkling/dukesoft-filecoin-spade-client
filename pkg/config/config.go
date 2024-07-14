@@ -18,17 +18,11 @@ type Configuration struct {
 	LotusConfig LotusConfig
 	SpadeConfig SpadeConfig
 	BoostConfig BoostConfig
-	AriaConfig  AriaConfig
 }
 
 type SpadeConfig struct {
 	Url                    string        `default:"https://api.spade.storage"`
 	PendingRefreshInterval time.Duration `default:"30s"`
-}
-
-type AriaConfig struct {
-	Url       string `default:"ws://localhost:6800/jsonrpc"`
-	AuthToken string `default:""`
 }
 
 type LotusConfig struct {

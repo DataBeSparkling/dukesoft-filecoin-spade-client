@@ -16,8 +16,6 @@
 Either download the binary or build this repository from source. 
 `go run .` or `go build` in the `cmd/spade-client` folder should suffice.
 
-Requires Aria2c (`sudo apt-get install aria2`) running as a daemon
-
 ## Configure
 
 Lotus and Boost configuration comes from the following environment variables;
@@ -28,12 +26,6 @@ MARKETS_API_INFO
 ```
 
 Please be sure these are properly set.
-
-Run aria2c as a daemon:
-
-```shell
-aria2c --enable-rpc
-```
 
 ## Example
 ```shell
@@ -49,7 +41,7 @@ USAGE:
    spade-client [global options] command [command options] [arguments...]
 
 VERSION:
-   1.0.0
+   1.1.0
 
 DESCRIPTION:
    A client for Filecoin's Spade service
@@ -74,8 +66,6 @@ USAGE:
 OPTIONS:
    --download-path value           The location where the downloaded files should reside (default: "/tmp/filecoin-spade-downloads")
    --max-spade-deals-active value  Total number of spade deals that should be actively downloading / requesting (This doesn't include other deals or sealing!) (default: 2)
-   --aria2-url value               RPC API URL for Aria2C (default: "ws://localhost:6800/jsonrpc")
-   --aria2-password value          Aria2C JSON RPC Password
    --boost-graphql-port value      Boost's GraphQL port (default: 8080)
    --help, -h                      show help
 ```
