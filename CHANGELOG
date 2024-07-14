@@ -1,0 +1,5 @@
+# 1.1.0
+Removes Aria2 dependency and config and uses the new piece downloader to download pieces / shards and rebuild the car.
+
+# 1.0.0
+Initial release
