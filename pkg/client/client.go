@@ -2,7 +2,6 @@ package client
 
 import (
 	"context"
-	"filecoin-spade-client/pkg/ariaclient"
 	"filecoin-spade-client/pkg/boostclient"
 	"filecoin-spade-client/pkg/config"
 	"filecoin-spade-client/pkg/log"
@@ -20,7 +19,6 @@ type Client struct {
 	LotusClient             *lotusclient.LotusClient
 	SpadeClient             *spadeclient.SpadeClient
 	BoostClient             *boostclient.BoostClient
-	AriaClient              *ariaclient.AriaClient
 	DuplicateDeals          map[string]string
 	DuplicateDealsMutex     sync.Mutex
 	ActiveDeals             map[string]*spadeclient.DealProposal
@@ -38,7 +36,6 @@ func New(config config.Configuration) *Client {
 	cl.LotusClient = lotusclient.New(config)
 	cl.SpadeClient = spadeclient.New(config, cl.LotusClient)
 	cl.BoostClient = boostclient.New(config)
-	cl.AriaClient = ariaclient.New(config)
 	cl.DuplicateDeals = make(map[string]string)
 	cl.ActiveDeals = make(map[string]*spadeclient.DealProposal)
 	cl.ImportedDeals = make(map[string]bool)
@@ -48,10 +45,6 @@ func New(config config.Configuration) *Client {
 
 func (cl *Client) Start(ctx context.Context) error {
 	log.Infof("Starting Spade Client...")
-	ariactx, cancelAria := context.WithCancel(ctx)
-	defer cancelAria()
-	cl.AriaClient.Start(ariactx)
-
 	newctx, cancelClient := context.WithCancel(ctx)
 	defer cancelClient()
 	cl.LotusClient.Start(newctx)
