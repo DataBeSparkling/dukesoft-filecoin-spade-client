@@ -176,6 +176,7 @@ func (cl *Client) scanPendingProposals(ctx context.Context) {
 					continue exit
 				} else {
 					// this should never happen, bug in Spade (handled above here in the failures)
+
 					//if proposal.PieceCid == deal.PieceCid {
 					//	log.Warnf("  > MATCHED ON PIECE %s (proposalID=%s) [PieceCID=%s]", deal.ID, proposal.ProposalID, deal.PieceCid)
 					//}
