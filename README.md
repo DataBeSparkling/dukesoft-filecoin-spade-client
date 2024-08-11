@@ -16,6 +16,8 @@
 Either download the binary or build this repository from source. 
 `go run .` or `go build` in the `cmd/spade-client` folder should suffice.
 
+To build properly linked `CGO_ENABLED=0 go build .`.
+
 ## Configure
 
 Lotus and Boost configuration comes from the following environment variables;
