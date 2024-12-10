@@ -21,7 +21,7 @@ type Configuration struct {
 }
 
 type SpadeConfig struct {
-	Url                    string        `default:"https://api.spade.storage"`
+	Url                    string        `default:"https://api.spade.storacha.network/"`
 	PendingRefreshInterval time.Duration `default:"30s"`
 }
 
